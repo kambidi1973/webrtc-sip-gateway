@@ -1,0 +1,37 @@
+version: "3.9"
+
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: webrtc-sip-gateway
+    restart: unless-stopped
+    ports:
+      - "8765:8765"       # WebSocket signaling + REST API
+      - "5060:5060/udp"   # SIP UDP
+      - "5060:5060/tcp"   # SIP TCP
+      - "10000-10100:10000-10100/udp"  # RTP media
+    volumes:
+      - ./config:/app/config:ro
+      - ./web:/app/web:ro
+      - gateway-logs:/app/logs
+    environment:
+      - GATEWAY_LOG_LEVEL=INFO
+      - GATEWAY_PUBLIC_IP=${PUBLIC_IP:-auto}
+      - GATEWAY_SIP_DOMAIN=${SIP_DOMAIN:-sip.example.com}
+    networks:
+      - gateway-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8765/api/v1/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  gateway-logs:
+
+networks:
+  gateway-net:
+    driver: bridge

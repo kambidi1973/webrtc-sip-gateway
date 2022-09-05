@@ -1,0 +1,184 @@
+# WebRTC-SIP Gateway Configuration
+# ===================================
+# All values can be overridden with environment variables using the prefix
+# GATEWAY_ followed by the section and key in uppercase (e.g., GATEWAY_SIP_DOMAIN).
+
+gateway:
+  # Public IP for SIP Contact/Via headers and RTP relay.
+  # Set to "auto" to detect automatically, or specify an explicit IP.
+  public_ip: "auto"
+  # Hostname used in SIP URIs
+  hostname: "gateway.example.com"
+  log_level: "INFO"
+
+# WebSocket signaling server for WebRTC clients
+websocket:
+  host: "0.0.0.0"
+  port: 8765
+  # Path for WebSocket connections
+  path: "/ws"
+  # Path prefix for REST API
+  api_prefix: "/api/v1"
+  # Maximum concurrent WebSocket connections
+  max_connections: 500
+  # Ping interval to keep connections alive (seconds)
+  ping_interval: 30
+  # Connection timeout (seconds)
+  connection_timeout: 60
+  # Enable CORS for web client
+  cors_origins:
+    - "*"
+
+# SIP configuration
+sip:
+  # Local SIP listening address
+  listen_host: "0.0.0.0"
+  listen_port: 5060
+  transport: "udp"  # udp, tcp, or tls
+  # SIP domain for URI construction
+  domain: "sip.example.com"
+  # User agent string
+  user_agent: "WebRTC-SIP-Gateway/1.0"
+  # SIP timers (seconds)
+  timers:
+    t1: 0.5       # RTT estimate (RFC 3261)
+    t2: 4.0       # Maximum retransmit interval for non-INVITE
+    t4: 5.0       # Maximum duration a message will remain in the network
+    timer_b: 32.0  # INVITE transaction timeout
+    timer_f: 32.0  # Non-INVITE transaction timeout
+    timer_d: 32.0  # Wait time for response retransmits
+  # Session timer (RFC 4028)
+  session_expires: 1800
+  min_se: 90
+
+# SIP trunk definitions
+trunks:
+  - name: "primary"
+    host: "sbc.carrier.example.com"
+    port: 5060
+    transport: "udp"
+    # Registration credentials (if trunk requires registration)
+    register: true
+    username: "gateway01"
+    password: "${SIP_TRUNK_PASSWORD}"
+    auth_realm: "carrier.example.com"
+    # Outbound proxy (optional)
+    outbound_proxy: null
+    # Maximum concurrent calls on this trunk
+    max_calls: 100
+    # Trunk priority (lower = higher priority)
+    priority: 1
+    # Codec preferences for this trunk
+    codecs:
+      - "PCMU"   # G.711 mu-law
+      - "PCMA"   # G.711 A-law
+      - "G722"   # Wideband
+      - "opus"   # Opus (if supported by peer)
+      - "telephone-event"
+
+  - name: "secondary"
+    host: "sbc2.carrier.example.com"
+    port: 5060
+    transport: "udp"
+    register: false
+    username: null
+    password: null
+    auth_realm: null
+    outbound_proxy: null
+    max_calls: 50
+    priority: 2
+    codecs:
+      - "PCMU"
+      - "PCMA"
+      - "telephone-event"
+
+# Media relay configuration
+media:
+  # RTP port range for media relay
+  rtp_port_min: 10000
+  rtp_port_max: 10100
+  # RTP timeout - terminate session if no media for this duration (seconds)
+  rtp_timeout: 60
+  # DTMF mode: "rfc4733" (recommended), "inband", or "sip_info"
+  dtmf_mode: "rfc4733"
+  # SRTP handling: "optional", "mandatory", "disabled"
+  srtp_mode: "optional"
+  # Jitter buffer size (ms)
+  jitter_buffer: 60
+
+# Codec global defaults
+codecs:
+  # Preferred codec order for offer generation
+  preferred_order:
+    - "opus"
+    - "G722"
+    - "PCMU"
+    - "PCMA"
+    - "telephone-event"
+  # Codec-specific parameters
+  opus:
+    clockrate: 48000
+    channels: 2
+    maxplaybackrate: 48000
+    stereo: 0
+    useinbandfec: 1
+    usedtx: 0
+  g722:
+    clockrate: 8000  # G.722 uses 8000 in SDP per RFC convention
+  pcmu:
+    clockrate: 8000
+  pcma:
+    clockrate: 8000
+  telephone_event:
+    clockrate: 8000
+    events: "0-16"
+
+# ICE configuration
+ice:
+  # STUN servers for ICE candidate gathering
+  stun_servers:
+    - "stun:stun.l.google.com:19302"
+    - "stun:stun1.l.google.com:19302"
+  # TURN servers (optional, for NAT traversal)
+  turn_servers: []
+  # ICE candidate gathering timeout (seconds)
+  gathering_timeout: 5
+  # Whether to use ICE-lite mode (gateway acts as controlled agent)
+  ice_lite: true
+
+# Routing rules
+routing:
+  # Default routing rules file
+  rules_file: "config/routing.yaml"
+  # Default trunk for outbound calls
+  default_trunk: "primary"
+  # Number normalization
+  normalization:
+    # Default country code for E.164 conversion
+    default_country_code: "+1"
+    # Strip leading digits before adding country code
+    strip_prefix: ""
+    # Minimum digit length to consider a valid number
+    min_digits: 7
+    # Maximum digit length
+    max_digits: 15
+
+# Session management
+sessions:
+  # Maximum concurrent sessions
+  max_sessions: 200
+  # Session setup timeout (seconds)
+  setup_timeout: 30
+  # Session idle timeout (seconds)
+  idle_timeout: 3600
+  # Enable session recording metadata
+  record_metadata: true
+
+# Logging
+logging:
+  level: "INFO"
+  format: "json"
+  # Log file path (null for stdout only)
+  file: null
+  # Access log for API requests
+  access_log: true

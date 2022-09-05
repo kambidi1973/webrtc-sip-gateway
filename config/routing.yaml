@@ -1,0 +1,87 @@
+# Routing Rules Configuration
+# ============================
+# Rules are evaluated in order; first match wins.
+
+rules:
+  # Emergency services - always route to primary trunk
+  - name: "emergency"
+    description: "Emergency services routing"
+    pattern: "^(911|112|999)$"
+    action: "route"
+    trunk: "primary"
+    priority: 1
+    transform: null
+
+  # International calls (starting with + or 011)
+  - name: "international"
+    description: "International call routing"
+    pattern: "^(\\+|011)"
+    action: "route"
+    trunk: "primary"
+    priority: 10
+    transform:
+      # Normalize to E.164
+      strip_prefix: "011"
+      add_prefix: "+"
+
+  # North American toll-free numbers
+  - name: "toll_free"
+    description: "Toll-free number routing"
+    pattern: "^1?(800|888|877|866|855|844|833)"
+    action: "route"
+    trunk: "primary"
+    priority: 20
+    transform:
+      ensure_prefix: "+1"
+
+  # North American domestic (10-digit or 1+10-digit)
+  - name: "domestic_nanp"
+    description: "NANP domestic routing"
+    pattern: "^1?[2-9]\\d{2}[2-9]\\d{6}$"
+    action: "route"
+    trunk: "primary"
+    priority: 30
+    transform:
+      ensure_prefix: "+1"
+      ensure_length: 12  # +1 plus 10 digits
+
+  # Internal extensions (4-digit)
+  - name: "internal"
+    description: "Internal extension dialing"
+    pattern: "^[1-9]\\d{3}$"
+    action: "route"
+    trunk: "primary"
+    priority: 40
+    transform:
+      add_prefix: "+15550"  # Map to reserved range
+
+  # Block premium rate numbers
+  - name: "block_premium"
+    description: "Block premium rate numbers"
+    pattern: "^1?(900|976)"
+    action: "reject"
+    reason: "Premium rate numbers are blocked"
+    priority: 5
+
+  # Default catch-all
+  - name: "default"
+    description: "Default routing rule"
+    pattern: ".*"
+    action: "route"
+    trunk: "primary"
+    priority: 100
+    transform: null
+
+# Number translation table for specific mappings
+translations:
+  "0": "+operator"
+  "411": "+14111234567"
+
+# Caller ID rules
+caller_id:
+  # Default caller ID for outbound calls
+  default: "+15551234567"
+  # Whether to pass through WebRTC client's caller ID
+  passthrough: false
+  # Privacy: "off", "id" (restrict caller ID), "full" (restrict all)
+  privacy: "off"
